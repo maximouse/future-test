@@ -1,119 +1,152 @@
 <template>
   <div>
-    <table :infoo="info">
-      <thead>
-        <tr>
-          <th
-            v-for="key in columns"
-            :key="key"
-            @click="sortBy(key)"
-            :class="{ active: sortKey == key }"
-          >
-            {{ key | capitalize }}
-            <span class="arrow" :class="sortOrders[key] > 0 ? 'asc' : 'dsc'"></span>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr @click="showInfo(entry)" v-for="entry in sorted" :key="sorted[entry]">
-          <td v-for="key in columns" :key="key.id">{{entry[key]}}</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="pages">
-      <button @click="prevPage">Previous</button>
-      <span>Page: {{pageNumber}} of {{pagesAmount}}</span>
-      <button @click="nextPage">Next</button>
+    <div class="panel">
+      <Searchbar v-model="search" @submit="onFind" />
+      <button class="add" @click="showModal = true">Добавить</button>
     </div>
+    <addCardModal v-if="showModal" @close="showModal = false" />
+    <div v-if="paginated.length>0" class="table-container">
+      <div class="pages">
+        <button @click="prevPage">Предыдущая</button>
+        <span>Страница: {{pageNumber}} из {{pagesAmount}}</span>
+        <button @click="nextPage">Следующая</button>
+      </div>
+        <table :infoo="info">
+          <thead>
+            <tr>
+              <th
+                v-for="key in columns"
+                :key="key"
+                @click="sortBy(key)"
+                :class="{ active: sortKey == key }"
+              >
+                {{ key | capitalize }}
+                <span
+                  class="arrow"
+                  :class="sortOrders[key] > 0 ? 'asc' : 'dsc'"
+                ></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr @click="showInfo(entry)" v-for="entry in paginated" :key="sorted[entry]">
+              <td v-for="key in columns" :key="key.id">{{entry[key]}}</td>
+            </tr>
+          </tbody>
+        </table>
+      
+    </div>
+
+    <div class="nodata" v-else>Нет данных</div>
   </div>
 </template>
 
 <script>
 import Cards from "@/store/modules/table_data.js";
+import Searchbar from "../components/searchbar.vue";
+import addCardModal from "../components/addCardModal";
 export default {
   name: "vtable",
+  components: {
+    Searchbar,
+    addCardModal,
+  },
   data: function () {
-    let columns = ["id", "firstName", "lastName", "email", "phone"]
-    let sortOrders = {}
+    let columns = ["id", "firstName", "lastName", "email", "phone"];
+    let sortOrders = {};
     columns.forEach(function (key) {
-      sortOrders[key] = 1
+      sortOrders[key] = 1;
     });
     return {
       columns: columns,
       sortKey: "",
       sortOrders: sortOrders,
-      perPage: 3,
+      perPage: 20,
       pageNumber: 1,
       pagesAmount: 0,
-      info: {}
-    }
+      info: {},
+      showModal: false,
+    };
   },
   props: {
     cards: Array,
-    search: String
+    search: String,
   },
   methods: {
+    onFind: function (search) {
+      this.search = search;
+      this.pageNumber = 1;
+    },
     sortBy: function (key) {
-      this.sortKey = key
-      this.sortOrders[key] = this.sortOrders[key] * -1
+      this.sortKey = key;
+      this.sortOrders[key] = this.sortOrders[key] * -1;
     },
     prevPage() {
       if (this.pageNumber !== 1) {
-        this.pageNumber = this.pageNumber - 1
+        this.pageNumber = this.pageNumber - 1;
       }
     },
     nextPage() {
       if (this.pageNumber !== this.pagesAmount) {
-        this.pageNumber = this.pageNumber + 1
+        this.pageNumber = this.pageNumber + 1;
       }
     },
-    showInfo(entry){
-        this.$emit('getInfo', entry)
+    showInfo(entry) {
+      this.$emit("getInfo", entry);
     },
-     filterByValue(array, string) {
-      return array.filter(o =>
-        Object.keys(o).some(k =>
-          o.firstName.toLowerCase().includes(string.toLowerCase())
+    filterByValue(array, string) {
+      let str = string.toLowerCase()
+      return array.filter((o) =>
+        Object.keys(o).some((k) =>
+          o.firstName.toLowerCase().includes(str) || o.lastName.toLowerCase().includes(str) || o.firstName.toLowerCase().includes(str) || o.email.toLowerCase().includes(str) || o.phone.toLowerCase().includes(str)
         )
-      )
-    }
+      );
+    },
   },
   computed: {
-    sorted: function () {
-      let pageNumber = this.pageNumber || 1
-      let cards = this.cards
-      let sortKey = this.sortKey
-      let order = this.sortOrders[sortKey] || 1
-      
-      if (sortKey) {
-        cards = cards.slice().sort(function (a, b) {
-          a = a[sortKey]
-          b = b[sortKey]
-          return (a === b ? 0 : a > b ? 1 : -1) * order
-        })
+    paginated() {
+      let cards = this.filtered;
+      let pageNumber = this.pageNumber;
+      if (this.pageNumber) {
+        let perPage = this.perPage;
+        let from = pageNumber * perPage - perPage;
+        let to = pageNumber * perPage;
+        this.pagesAmount = Math.ceil(cards.length / perPage);
+   
+        cards = cards.slice(from, to);
       }
+      return cards;
+    },
+    filtered: function () {
+      let cards = this.sorted;
       if (this.search) {
         cards = this.filterByValue(cards, this.search);
       }
-      if (pageNumber) {
-        let perPage = this.perPage
-        let from = pageNumber * perPage - perPage
-        let to = pageNumber * perPage
-        this.pagesAmount = Math.ceil(cards.length / this.perPage)
-        cards = cards.slice(from, to)
-        
+      return cards;
+    },
+    sorted: function () {
+      let pageNumber = this.pageNumber;
+      let cards = this.cards;
+      let sortKey = this.sortKey;
+      let order = this.sortOrders[sortKey] || 1;
+
+      if (sortKey) {
+        cards = cards.slice().sort(function (a, b) {
+          a = a[sortKey];
+          b = b[sortKey];
+          return (a === b ? 0 : a > b ? 1 : -1) * order;
+        });
       }
-      
-      return cards
+      return cards;
     },
   },
   beforeMount: function () {},
   filters: {
     capitalize: function (str) {
-      return str.charAt(0).toUpperCase() + str.slice(1)
+      return str.charAt(0).toUpperCase() + str.slice(1);
     },
   },
-}
+};
 </script>
 
 <style scoped>
@@ -121,6 +154,10 @@ body {
   font-family: Helvetica Neue, Arial, sans-serif;
   font-size: 14px;
   color: #444;
+}
+.panel {
+  display: flex;
+  flex-direction: row;
 }
 .pages {
   margin: 10px;
@@ -130,13 +167,17 @@ body {
 }
 button {
   margin: 5px;
-  width: 100px;
+  width: fit-content;
+  max-width: 150px;
   height: 30px;
   border-radius: 5px;
   outline: none;
   background-color: lightgrey;
   color: whitesmoke;
   font-size: 1.2rem;
+}
+.add{
+  background-color: rgb(76, 205, 50);
 }
 button:hover {
   cursor: pointer;
@@ -146,7 +187,7 @@ span {
 }
 table {
   border: 2px solid #5a9fc7;
-  border-radius: 3px;
+  border-radius: 5px;
   background-color: #fff;
 }
 th {
@@ -157,11 +198,9 @@ th {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-
 }
 td {
   background-color: #f9f9f9;
- 
 }
 th,
 td {
@@ -172,6 +211,14 @@ td {
 }
 th.active {
   color: #fff;
+}
+ tr:hover td {
+  cursor: pointer;
+  background-color: #f1f1f1;
+}
+th:hover{
+  cursor: pointer;
+  background-color: #88afc5;
 }
 th.active .arrow {
   opacity: 1;

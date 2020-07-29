@@ -3,7 +3,7 @@
 </template>
 
 <style scoped>
-    .lds-roller {
+  .lds-roller {
   display: inline-block;
   position: relative;
   width: 80px;

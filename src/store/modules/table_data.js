@@ -1,7 +1,9 @@
 export default {
     actions: {
-       async fetchCards(ctx){
-            const res = await fetch('http://www.filltext.com/?rows=10&id={number|1000}&firstName={firstName}&lastName={lastName}&email={email}&phone={phone|(xxx)xxx-xx-xx}&address={addressObject}&description={lorem|32}')
+       async fetchCards(ctx, link){
+
+            
+            let res = await fetch(link)
             const cards = await res.json()
             ctx.commit('updateCards', cards)
         }
@@ -11,7 +13,8 @@ export default {
             state.cards = cards
         },
         createCard(state, newCard){
-            state.cards.push(newCard)
+            state.cards.unshift(newCard)
+            console.log(state.cards)
         },
         deleteCard(state, id){
            state.cards = state.cards.filter(p => p.id !== id)   

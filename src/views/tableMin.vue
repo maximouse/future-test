@@ -1,11 +1,17 @@
 <template>
     <div>
-        <div v-if="loading"><Loader /></div>
-        <div v-else>
-            <Search v-model="search" />
-            <vtable :search="search" v-on:getInfo="onGetInfo" :cards="allCards" />
+        <router-link class="link" to="/">Назад</router-link>
+        <div class="loading" v-if="loading"><Loader /></div>
+        <div class="table-wrapper" v-else-if="!err"> 
+            <vtable @getInfo="onGetInfo" :cards="allCards" />
+            <infoCard v-if="info" :info="info" />
         </div>
-        <infoCard v-if="info" :info="info" />
+        <div class="error" v-else>
+            {{err}}
+            <button @click="window.location.reload()">Перезагрузить</button>
+        </div>
+        
+        
     </div>
    
 </template>
@@ -13,7 +19,8 @@
     import Loader from '../components/loader.vue'
     import vtable from '../components/table.vue'
     import infoCard from '../components/infoCard.vue'
-    import Search from '../components/search.vue' 
+
+    
     import {mapGetters, mapActions} from 'vuex'
     export default{
         name: "table-min",
@@ -21,13 +28,16 @@
             Loader,
             vtable,
             infoCard,
-            Search
+         
+           
         },
         data: function(){
             return { 
                 loading: true,
                 info: null,
-                search: ""
+                search: "",
+                err: "",
+               
             }
         },
         props: {
@@ -37,24 +47,22 @@
             ...mapActions(['fetchCards']),
             onGetInfo: function(entry){
                 this.info = entry
-            }
-
-           
+            },
+            
         },
         computed: {
             ...mapGetters(['allCards']),
             
         },
         async mounted(){
-            this.fetchCards().then(()=>{
+            let link = "http://www.filltext.com/?rows=32&id={number|1000}&firstName={firstName}&lastName={lastName}&email={email}&phone={phone|(xxx)xxx-xx-xx}&address={addressObject}&description={lorem|32}"
+            this.fetchCards(link).then(()=>{
                 this.loading = false
-            }
-               
-            )
-            
-                // setTimeout(()=> this.loading = false, 1000) 
-                // this.loading = false
-            
+            }).catch(error => {
+                this.loading = false
+                this.err = error
+                console.log(error)
+            })
         }
     }
 </script>
@@ -63,5 +71,29 @@
     div{
         width: 100%;
         margin: 0 auto;
+    }
+    .error{
+        display: block;
+        height: 200px;
+        font-size: 2rem;
+        background-color: crimson;
+        color: whitesmoke;
+        text-align: center;
+    }
+    .link{
+    display: block;
+    width: 150px;
+    margin: 10px;
+    font-size: 1.5rem;
+    text-align: center;
+    border: 1px solid black;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+    }
+    .tabple-wrapper{
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 </style>
